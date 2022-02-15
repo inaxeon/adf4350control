@@ -30,7 +30,7 @@ AVRDUDE_POSTCMD =
 FUSES      = -U fuse0:w:0x00:m -U fuse1:w:0x00:m -U fuse2:w:0x02:m -U fuse5:w:0xC4:m -U fuse6:w:0x06:m -U fuse7:w:0x00:m -U fuse8:w:0x00:m
 endif
 
-SRCS       = main.c cmd.c config.c util.c usart_buffered.c i2c.c timer.c
+SRCS       = main.c cmd.c config.c util.c usart_buffered.c i2c.c timer.c adf4350.c
 OBJS       = $(SRCS:.c=.o)
 DEPDIR     = deps
 DEPFLAGS   = -MT $@ -MMD -MP -MF $(DEPDIR)/$*.Td
