@@ -31,6 +31,7 @@
 #include "cmd.h"
 #include "usart.h"
 #include "util.h"
+#include "adf4350.h"
 
 #define CMD_NONE              0x00
 #define CMD_READLINE          0x01
@@ -157,6 +158,15 @@ bool command_prompt_handler(char *text, sys_config_t *config)
 
 static void do_state(void)
 {
+    adf4350_calculated_parameters_t *params = NULL;
+
+    printf("actual_freq: %.6f MHz VCO: %llu Hz, PFD %.3f Hz\n"
+        "REF_DIV %d, R0_INT %d, R0_FRACT %d\n"
+        "R1_MOD %d, RF_DIV %d\nPRESCALER %s, BAND_SEL_DIV %d\n",
+		params->actual_freq, params->vco, params->pfd, params->r_cnt, params->intv, params->fract, params->fract,
+        params->rf_div, params->prescaler ? "8/9" : "4/5",
+        params->band_sel_div);
+
     printf(
             "\r\nCurrent state:\r\n\r\n"
             "\r\n"
