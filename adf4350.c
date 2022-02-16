@@ -165,25 +165,25 @@ bool adf4350_set_freq(uint64_t freq, adf4350_platform_data_t *settings, adf4350_
         st.r4_rf_div_sel++;
     }
 
-	do {
-		do {
-			do {
-				r_cnt = adf4350_tune_r_cnt(&st, r_cnt);
-				st.r1_mod = st.fpfd / chspc;
-				if (r_cnt > ADF4350_MAX_R_CNT) {
-					/* try higher spacing values */
-					chspc++;
-					r_cnt = 0;
-				}
-			} while ((st.r1_mod > ADF4350_MAX_MODULUS) && r_cnt &&
-				(settings->max_r_value == 0 || r_cnt < settings->max_r_value));
-		} while (r_cnt == 0);
+    do {
+        do {
+            do {
+                r_cnt = adf4350_tune_r_cnt(&st, r_cnt);
+                st.r1_mod = st.fpfd / chspc;
+                if (r_cnt > ADF4350_MAX_R_CNT) {
+                    /* try higher spacing values */
+                    chspc++;
+                    r_cnt = 0;
+                }
+            } while ((st.r1_mod > ADF4350_MAX_MODULUS) && r_cnt &&
+                (settings->max_r_value == 0 || r_cnt < settings->max_r_value));
+        } while (r_cnt == 0);
 
-		tmp = freq * (uint64_t)st.r1_mod + ((uint32_t)st.fpfd >> 1);
-		adf_4350_do_div(&tmp, st.fpfd); /* Div round closest (n + d/2)/d */
-		st.r0_fract = adf_4350_do_div(&tmp, st.r1_mod);
-		st.r0_int = tmp;
-	} while (mdiv > st.r0_int);
+        tmp = freq * (uint64_t)st.r1_mod + ((uint32_t)st.fpfd >> 1);
+        adf_4350_do_div(&tmp, st.fpfd); /* Div round closest (n + d/2)/d */
+        st.r0_fract = adf_4350_do_div(&tmp, st.r1_mod);
+        st.r0_int = tmp;
+    } while (mdiv > st.r0_int);
 
     band_sel_div = DIV_ROUND_UP(st.fpfd, ADF4350_MAX_BANDSEL_CLK);
 
@@ -257,7 +257,7 @@ bool adf4350_set_freq(uint64_t freq, adf4350_platform_data_t *settings, adf4350_
 
 static int adf4350_tune_r_cnt(adf4350_state_t *st, uint16_t r_cnt)
 {
-	adf4350_platform_data_t *pdata = st->pdata;
+    adf4350_platform_data_t *pdata = st->pdata;
 
     do {
         r_cnt++;

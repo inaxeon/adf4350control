@@ -9,17 +9,18 @@
 # Fixes clash between windows and coreutils mkdir. Comment out the below line to compile on Linux
 COREUTILS  = C:/Dev/compilers/coreutils/bin/
 
-DEVICE              = attiny1614
-AVRDUDEDEV          = t1614
+DEVICE              = attiny1624
+AVRDUDEDEV          = t1624
 CLOCK               = 20000000
 
-LOCALPORT           = COM6
+PROGRAMMING_MODE    = local
+LOCALPORT           = COM4
 BL_LDFLAGS          = -Wl,--section-start=.text=0x200
-PGMPREP = fuckknows
 
 ifeq ($(PROGRAMMING_MODE),local)
 AVRDUDE_ARGS = -u -c arduino -D -P $(LOCALPORT) -b 115200 -p $(AVRDUDEDEV)
-AVRDUDE = $(PGMPREP) -p $(LOCALPORT) -o Local && avrdude $(AVRDUDE_ARGS)
+# AVRDUDE = $(PGMPREP) -p $(LOCALPORT) -o Local && avrdude $(AVRDUDE_ARGS)
+AVRDUDE = avrdude $(AVRDUDE_ARGS)
 AVRDUDE_POSTCMD =
 endif
 

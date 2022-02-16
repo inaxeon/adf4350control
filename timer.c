@@ -28,8 +28,8 @@
 void timer_tcb0_init(void)
 {
     
-    TCB0.CTRLA = TCB_CLKSEL_CLKDIV1_gc | _BV(TCB_ENABLE_bp);
-    //TCB0.CTRLA = TCB_CLKSEL_DIV1_gc | _BV(TCB_ENABLE_bp);
+    //TCB0.CTRLA = TCB_CLKSEL_CLKDIV1_gc | _BV(TCB_ENABLE_bp);
+    TCB0.CTRLA = TCB_CLKSEL_DIV1_gc | _BV(TCB_ENABLE_bp);
     TCB0.CTRLB = TCB_CNTMODE_INT_gc;
     TCB0.INTCTRL = _BV(TCB_CAPT_bp);
     //TCB0.CCMP = 20135; // Every 1ms. 20Mhz / 1000 with fudge factor
