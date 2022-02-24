@@ -32,74 +32,6 @@
 #include "iopins.h"
 #include "util.h"
 
-/* Registers */
-#define ADF4350_REG0                            0
-#define ADF4350_REG1                            1
-#define ADF4350_REG2                            2
-#define ADF4350_REG3                            3
-#define ADF4350_REG4                            4
-#define ADF4350_REG5                            5
-
-/* REG0 Bit Definitions */
-#define ADF4350_REG0_FRACT(x)                   (((x) & 0xFFF) << 3)
-#define ADF4350_REG0_INT(x)                     (((x) & 0xFFFF) << 15)
-
-/* REG1 Bit Definitions */
-#define ADF4350_REG1_MOD(x)                     (((x) & 0xFFF) << 3)
-#define ADF4350_REG1_PHASE(x)                   (((x) & 0xFFF) << 15)
-#define ADF4350_REG1_PRESCALER                  (1UL << 27)
-
-/* REG2 Bit Definitions */
-#define ADF4350_REG2_COUNTER_RESET_EN           (1UL << 3)
-#define ADF4350_REG2_CP_THREESTATE_EN           (1UL << 4)
-#define ADF4350_REG2_POWER_DOWN_EN              (1UL << 5)
-#define ADF4350_REG2_PD_POLARITY_POS            (1UL << 6)
-#define ADF4350_REG2_LDP_6ns                    (1UL << 7)
-#define ADF4350_REG2_LDP_10ns                   (0UL << 7)
-#define ADF4350_REG2_LDF_FRACT_N                (0UL << 8)
-#define ADF4350_REG2_LDF_INT_N                  (1UL << 8)
-#define ADF4350_REG2_CHARGE_PUMP_CURR_uA(x)     (((((x)-312) / 312) & 0xF) << 9)
-#define ADF4350_REG2_DOUBLE_BUFF_EN             (1UL << 13)
-#define ADF4350_REG2_10BIT_R_CNT(x)             ((x) << 14)
-#define ADF4350_REG2_RDIV2_EN                   (1UL << 24)
-#define ADF4350_REG2_RMULT2_EN                  (1UL << 25)
-#define ADF4350_REG2_MUXOUT(x)                  ((x) << 26)
-#define ADF4350_REG2_NOISE_MODE(x)              (((uint32_t)(x)) << 29)
-#define ADF4350_MUXOUT_THREESTATE               0
-#define ADF4350_MUXOUT_DVDD                     1
-#define ADF4350_MUXOUT_GND                      2
-#define ADF4350_MUXOUT_R_DIV_OUT                3
-#define ADF4350_MUXOUT_N_DIV_OUT                4
-#define ADF4350_MUXOUT_ANALOG_LOCK_DETECT       5
-#define ADF4350_MUXOUT_DIGITAL_LOCK_DETECT      6
-
-/* REG3 Bit Definitions */
-#define ADF4350_REG3_12BIT_CLKDIV(x)            ((x) << 3)
-#define ADF4350_REG3_12BIT_CLKDIV_MODE(x)       ((x) << 16)
-#define ADF4350_REG3_12BIT_CSR_EN               (1UL << 18)
-#define ADF4351_REG3_CHARGE_CANCELLATION_EN     (1UL << 21)
-#define ADF4351_REG3_ANTI_BACKLASH_3ns_EN       (1UL << 22)
-#define ADF4351_REG3_BAND_SEL_CLOCK_MODE_HIGH   (1UL << 23)
-
-/* REG4 Bit Definitions */
-#define ADF4350_REG4_OUTPUT_PWR(x)              ((x) << 3)
-#define ADF4350_REG4_RF_OUT_EN                  (1UL << 5)
-#define ADF4350_REG4_AUX_OUTPUT_PWR(x)          ((x) << 6)
-#define ADF4350_REG4_AUX_OUTPUT_EN              (1UL << 8)
-#define ADF4350_REG4_AUX_OUTPUT_FUND            (1UL << 9)
-#define ADF4350_REG4_AUX_OUTPUT_DIV             (0UL << 9)
-#define ADF4350_REG4_MUTE_TILL_LOCK_EN          (1UL << 10)
-#define ADF4350_REG4_VCO_PWRDOWN_EN             (1UL << 11)
-#define ADF4350_REG4_8BIT_BAND_SEL_CLKDIV(x)    ((x) << 12)
-#define ADF4350_REG4_RF_DIV_SEL(x)              ((x) << 20)
-#define ADF4350_REG4_FEEDBACK_DIVIDED           (0UL << 23)
-#define ADF4350_REG4_FEEDBACK_FUND              (1UL << 23)
-
-/* REG5 Bit Definitions */
-#define ADF4350_REG5_LD_PIN_MODE_LOW            (0UL << 22)
-#define ADF4350_REG5_LD_PIN_MODE_DIGITAL        (1UL << 22)
-#define ADF4350_REG5_LD_PIN_MODE_HIGH           (3UL << 22)
-
 /* Specifications */
 #define ADF4350_MAX_OUT_FREQ                    4400000000ULL /* Hz */
 #define ADF4350_MIN_OUT_FREQ                    137500000 /* Hz */
@@ -119,7 +51,7 @@ typedef struct
     adf4350_platform_data_t *pdata;
     uint32_t                clkin;
     uint32_t                chspc; /* Channel Spacing */
-    double                  fpfd;  /* Phase Frequency Detector */
+    uint64_t                fpfd;  /* Phase Frequency Detector */
     uint16_t                r0_fract;
     uint16_t                r0_int;
     uint16_t                r1_mod;
@@ -169,7 +101,7 @@ bool adf4350_set_freq(uint64_t freq, adf4350_platform_data_t *settings, adf4350_
         do {
             do {
                 r_cnt = adf4350_tune_r_cnt(&st, r_cnt);
-                st.r1_mod = st.fpfd / chspc;
+                st.r1_mod = (st.fpfd / 1000) / chspc;
                 if (r_cnt > ADF4350_MAX_R_CNT) {
                     /* try higher spacing values */
                     chspc++;
@@ -179,8 +111,8 @@ bool adf4350_set_freq(uint64_t freq, adf4350_platform_data_t *settings, adf4350_
                 (settings->max_r_value == 0 || r_cnt < settings->max_r_value));
         } while (r_cnt == 0);
 
-        tmp = freq * (uint64_t)st.r1_mod + ((uint32_t)st.fpfd >> 1);
-        adf_4350_do_div(&tmp, st.fpfd); /* Div round closest (n + d/2)/d */
+        tmp = freq * st.r1_mod + ((st.fpfd / 1000) >> 1);
+        adf_4350_do_div(&tmp, (st.fpfd / 1000)); /* Div round closest (n + d/2)/d */
         st.r0_fract = adf_4350_do_div(&tmp, st.r1_mod);
         st.r0_int = tmp;
     } while (mdiv > st.r0_int);
@@ -198,11 +130,11 @@ bool adf4350_set_freq(uint64_t freq, adf4350_platform_data_t *settings, adf4350_
     }
 
     regs[ADF4350_REG0] = ADF4350_REG0_INT(st.r0_int) |
-        ADF4350_REG0_FRACT(st.r0_fract);
+        ADF4350_REG0_FRACT(st.r0_fract) | ADF4350_REG0;
 
     regs[ADF4350_REG1] = ADF4350_REG1_PHASE(1) |
         ADF4350_REG1_MOD(st.r1_mod) |
-        prescaler;
+        prescaler | ADF4350_REG1;
 
     regs[ADF4350_REG2] =
         ADF4350_REG2_10BIT_R_CNT(r_cnt) |
@@ -212,15 +144,15 @@ bool adf4350_set_freq(uint64_t freq, adf4350_platform_data_t *settings, adf4350_
         (settings->r2_user_settings & (ADF4350_REG2_PD_POLARITY_POS |
             ADF4350_REG2_LDP_6ns | ADF4350_REG2_LDF_INT_N |
             ADF4350_REG2_CHARGE_PUMP_CURR_uA(5000) |
-            ADF4350_REG2_MUXOUT(0x7UL) | ADF4350_REG2_NOISE_MODE(0x3UL)));
+            ADF4350_REG2_MUXOUT(0x7UL) | ADF4350_REG2_NOISE_MODE(0x3UL))) | ADF4350_REG2;
 
-    regs[ADF4350_REG3] = settings->r3_user_settings &
+    regs[ADF4350_REG3] = (settings->r3_user_settings &
         (ADF4350_REG3_12BIT_CLKDIV(0xFFF) |
             ADF4350_REG3_12BIT_CLKDIV_MODE(0x3UL) |
             ADF4350_REG3_12BIT_CSR_EN |
             ADF4351_REG3_CHARGE_CANCELLATION_EN |
             ADF4351_REG3_ANTI_BACKLASH_3ns_EN |
-            ADF4351_REG3_BAND_SEL_CLOCK_MODE_HIGH);
+            ADF4351_REG3_BAND_SEL_CLOCK_MODE_HIGH)) | ADF4350_REG3;
 
     regs[ADF4350_REG4] =
         ADF4350_REG4_FEEDBACK_FUND |
@@ -232,9 +164,9 @@ bool adf4350_set_freq(uint64_t freq, adf4350_platform_data_t *settings, adf4350_
             ADF4350_REG4_AUX_OUTPUT_PWR(0x3) |
             ADF4350_REG4_AUX_OUTPUT_EN |
             ADF4350_REG4_AUX_OUTPUT_FUND |
-            ADF4350_REG4_MUTE_TILL_LOCK_EN));
+            ADF4350_REG4_MUTE_TILL_LOCK_EN)) | ADF4350_REG4;
 
-    regs[ADF4350_REG5] = ADF4350_REG5_LD_PIN_MODE_DIGITAL | 0x180000 /* Reserved bits */;
+    regs[ADF4350_REG5] = ADF4350_REG5_LD_PIN_MODE_DIGITAL | 0x180000 /* Reserved bits */ | ADF4350_REG5;
 
     if (params)
     {
@@ -243,8 +175,9 @@ bool adf4350_set_freq(uint64_t freq, adf4350_platform_data_t *settings, adf4350_
         params->r_cnt = r_cnt;
         params->intv = st.r0_int;
         params->fract = st.r0_fract;
+        params->mod = st.r1_mod;
         params->rf_div = (1 << st.r4_rf_div_sel);
-        params->actual_freq = (((double)st.r0_int + ((double)st.r0_fract / (double)st.r1_mod)) * st.fpfd / (1 << st.r4_rf_div_sel)) / 1000000;
+        params->actual_freq = (((((uint64_t)st.r0_int * 1000000) + (((uint64_t)st.r0_fract * 1000000) / ((uint64_t)st.r1_mod))) * st.fpfd) / (1 << st.r4_rf_div_sel)) / 1000000;
         params->prescaler = prescaler;
         params->band_sel_div = band_sel_div;
 
@@ -261,8 +194,8 @@ static int adf4350_tune_r_cnt(adf4350_state_t *st, uint16_t r_cnt)
 
     do {
         r_cnt++;
-        st->fpfd = (st->clkin * (pdata->ref_doubler_en ? 2 : 1)) / ((double)r_cnt * (pdata->ref_div2_en ? 2 : 1));
-    } while (st->fpfd > ADF4350_MAX_FREQ_PFD);
+        st->fpfd = (((uint64_t)st->clkin * 1000) * (pdata->ref_doubler_en ? 2 : 1)) / (r_cnt * (pdata->ref_div2_en ? 2 : 1));
+    } while ((st->fpfd / 1000) > ADF4350_MAX_FREQ_PFD);
 
     return r_cnt;
 }

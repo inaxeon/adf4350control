@@ -73,6 +73,7 @@ int main(void)
     clock_init();
     io_init();
     timer_tcb0_init();
+    g_irq_enable();
 
     usart0_open(USART_CONT_RX, USART_BAUD_RATE(UART0_BAUD)); // Console
 
