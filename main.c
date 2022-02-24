@@ -56,6 +56,7 @@ typedef struct
 sys_config_t _g_cfg;
 sys_runstate_t _g_rs;
 sys_counters_t _g_counters;
+adf4350_calculated_parameters_t _g_params;
 
 FILE uart_str = FDEV_SETUP_STREAM(print_char, NULL, _FDEV_SETUP_RW);
 
@@ -93,9 +94,8 @@ int main(void)
     }
 }
 
-void do_freq(sys_config_t *config)
+bool do_freq(sys_config_t *config)
 {
-    adf4350_calculated_parameters_t params;
     adf4350_platform_data_t settings;
 
     settings.clkin = 25000000;
@@ -106,18 +106,18 @@ void do_freq(sys_config_t *config)
 	settings.r2_user_settings = ADF4350_REG2_NOISE_MODE(0) | ADF4350_REG2_LDP_10ns | ADF4350_REG2_MUXOUT(0UL)
 		| ADF4350_REG2_PD_POLARITY_POS | ADF4350_REG2_CHARGE_PUMP_CURR_uA(2500) | ADF4350_REG2_LDF_FRACT_N;
 	settings.r3_user_settings = ADF4350_REG3_12BIT_CLKDIV(150UL) | ADF4350_REG3_12BIT_CLKDIV_MODE(0UL);
-	settings.r4_user_settings = ADF4350_REG4_OUTPUT_PWR(3UL) | ADF4350_REG4_RF_OUT_EN;
+	settings.r4_user_settings = ADF4350_REG4_OUTPUT_PWR((uint32_t)config->power) | ADF4350_REG4_RF_OUT_EN;
 
-    if (!adf4350_set_freq(config->freq * 1000 /* Hz from here on */, &settings, &params))
-    {
-        printf("Set frequency command failed\r\n");
-        return;
-    }
+    return adf4350_set_freq(config->freq * 1000 /* Hz from here on */, &settings, &_g_params);
+}
 
-    uint32_t pfd = (uint32_t)(params.pfd / 1000);
-    uint32_t actual_freq = (uint32_t)(params.actual_freq / 1000000000);
-    uint32_t actual_freq_rem = (uint32_t)(params.actual_freq % 1000000000) / 1000;
-    uint32_t vco = (uint32_t)(params.vco);
+void do_state(void)
+{
+    adf4350_calculated_parameters_t *params = &_g_params;
+    uint32_t pfd = (uint32_t)(params->pfd / 1000);
+    uint32_t actual_freq = (uint32_t)(params->actual_freq / 1000000000);
+    uint32_t actual_freq_rem = (uint32_t)(params->actual_freq % 1000000000) / 1000;
+    uint32_t vco = (uint32_t)(params->vco);
 
     printf("\r\nCalculated state:\r\n\r\n"
            "\tActual frequency ..: %lu.%lu MHz\r\n"
@@ -137,11 +137,11 @@ void do_freq(sys_config_t *config)
            "\tR4 ................: 0x%08lX\r\n"
            "\tR5 ................: 0x%08lX\r\n\r\n",
 		actual_freq, actual_freq_rem, vco,
-        pfd, params.r_cnt, params.intv,
-        params.fract, params.mod, params.rf_div,
-        params.prescaler ? "8/9" : "4/5",
-        params.band_sel_div,
-        params.regs[0], params.regs[1], params.regs[2], params.regs[3], params.regs[4], params.regs[5]);
+        pfd, params->r_cnt, params->intv,
+        params->fract, params->mod, params->rf_div,
+        params->prescaler ? "8/9" : "4/5",
+        params->band_sel_div,
+        params->regs[0], params->regs[1], params->regs[2], params->regs[3], params->regs[4], params->regs[5]);
 }
 
 static void clock_init(void)

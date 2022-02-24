@@ -25,6 +25,7 @@
 #define CONFIG_MAGIC        0x4144
 #define DEFAULT_FREQ        200000
 #define DEFAULT_R           0
+#define DEFAULT_POWER       3
 
 #define CLRWDT() asm("wdr")
 

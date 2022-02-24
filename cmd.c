@@ -81,18 +81,32 @@ typedef struct
 } cmd_state_t;
 
 static void do_help(void);
-static void do_state(void);
 static void cmd_prompt(cmd_state_t *ccmd);
+static bool do_power(sys_config_t *config, const char *arg);
 static void cmd_erase_line(cmd_state_t *ccmd);
 static bool parse_param(void *param, uint8_t type, char *arg);
 
 uint8_t _g_current_console;
 cmd_state_t _g_cmd[CMD_MAX_CONSOLE];
 
+static const char *_g_powerLevels[] =
+{
+    "-4",
+    "-1",
+    "+2",
+    "+5"
+};
+
 static void do_help(void)
 {
     printf(
         "\r\nCommands:\r\n\r\n"
+        "\tfreq [nnnn.nnn]\r\n"
+        "\t\tSet output frequency in MHz\r\n\r\n"
+        "\tr [r]\r\n"
+        "\t\tSet maximum R value\r\n\r\n"
+        "\tpower [-4|-1|+2|+5]\r\n"
+        "\t\tSet output power in dBm\r\n\r\n"
         "\tshow\r\n"
         "\t\tShow current configuration\r\n\r\n"
         "\tdefault\r\n"
@@ -111,12 +125,14 @@ static void do_show(sys_config_t *config)
 
     printf(
             "\r\nCurrent configuration:\r\n\r\n"
-            "\tfreq ......: %lu.%lu\r\n"
-            "\tr .........: %u\r\n"
+            "\tfreq ..............: %lu.%lu MHz\r\n"
+            "\tr .................: %u\r\n"
+            "\tpower .............: %s dBm\r\n"
             "\r\n",
             set_freq,
             set_freq_rem,
-            config->r_value
+            config->r_value,
+            _g_powerLevels[config->power]
     );
 }
 
@@ -138,13 +154,17 @@ bool command_prompt_handler(char *text, sys_config_t *config)
         bool ret = parse_param(&config->freq, PARAM_U64_3DP, arg);
 
         if (ret)
-            do_freq(config);
-            
-        return ret;
+            return do_freq(config);
+
+        return false;
     }
     else if (!stricmp(command, "r"))
     {
         return parse_param(&config->r_value, PARAM_U16, arg);
+    }
+    else if (!stricmp(command, "power"))
+    {
+        return do_power(config, arg);
     }
     else if (!stricmp(command, "show"))
     {
@@ -179,12 +199,18 @@ bool command_prompt_handler(char *text, sys_config_t *config)
     return false;
 }
 
-static void do_state(void)
+static bool do_power(sys_config_t *config, const char *arg)
 {
-    printf(
-            "\r\nCurrent state:\r\n\r\n"
-            "\r\n"
-    );
+    for (int i = 0; i < 4; i++)
+    {
+        if (!strcmp(arg, _g_powerLevels[i]))
+        {
+            config->power = i;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 static bool parse_param(void *param, uint8_t type, char *arg)
@@ -198,7 +224,6 @@ static bool parse_param(void *param, uint8_t type, char *arg)
 
     if (!arg || !*arg)
     {
-        /* Avoid stack overflow */
         printf("Error: Missing parameter\r\n");
         return false;
     }
@@ -251,10 +276,11 @@ static bool parse_param(void *param, uint8_t type, char *arg)
 
             if (s && *s != 0)
             {
-                uint16_t dplen = strlen(s);
+                size_t dplen = strlen(s);
+
                 if (dp == 0)
                     return false;
-                if (dp == 3 &&  dplen> 3)
+                if (dp == 3 &&  dplen > 3)
                     return false;
                
                 if (dplen == 1)
@@ -263,8 +289,8 @@ static bool parse_param(void *param, uint8_t type, char *arg)
                     u64param += atoi(s) * (dpmul / 10);
                 else if (dplen == 3)
                     u64param += atoi(s) * (dpmul / 100);
-
             }
+            
             *(uint64_t *)param = u64param;
             break;
     }

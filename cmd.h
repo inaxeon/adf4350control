@@ -39,6 +39,7 @@ bool set_gpio_output(bool state, uint8_t flags);
 void dump_state(void);
 void set_suspend(bool suspended);
 
-void do_freq(sys_config_t *config);
+bool do_freq(sys_config_t *config);
+void do_state(void);
 
 #endif /* __CMD_H__ */

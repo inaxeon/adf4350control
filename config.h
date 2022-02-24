@@ -23,6 +23,7 @@ typedef struct {
     uint16_t magic;
     uint64_t freq;
     uint16_t r_value;
+    uint8_t power;
 } sys_config_t;
 
 void load_configuration(sys_config_t *config);

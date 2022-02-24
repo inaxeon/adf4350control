@@ -30,16 +30,12 @@ void load_configuration(sys_config_t *config)
 {
     uint16_t config_size = sizeof(sys_config_t);
     if (config_size > 0x100)
-    {
-        printf("\r\nConfiguration size is too large. Currently %u bytes.", config_size);
         reset();
-    }
     
     eeprom_read_data(0, (uint8_t *)config, sizeof(sys_config_t));
 
     if (config->magic != CONFIG_MAGIC)
     {
-        printf("\r\nNo configuration found. Setting defaults\r\n");
         default_configuration(config);
         save_configuration(config);
     }
@@ -50,6 +46,7 @@ void default_configuration(sys_config_t *config)
     config->magic = CONFIG_MAGIC;
     config->freq = DEFAULT_FREQ;
     config->r_value = DEFAULT_R;
+    config->power = DEFAULT_POWER;
 }
 
 void save_configuration(sys_config_t *config)
