@@ -23,6 +23,8 @@
 #define _I2C_XFER_
 
 #define CONFIG_MAGIC        0x4144
+#define DEFAULT_FREQ        200000
+#define DEFAULT_R           0
 
 #define CLRWDT() asm("wdr")
 

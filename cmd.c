@@ -62,7 +62,8 @@
 
 #define PARAM_U8              0
 #define PARAM_U16             1
-#define PARAM_U16_F10         2
+#define PARAM_U64             2
+#define PARAM_U64_3DP         3
 
 #define CMD_MAX_CONSOLE       1
 #define CMD_MAX_HISTORY       4
@@ -81,9 +82,9 @@ typedef struct
 
 static void do_help(void);
 static void do_state(void);
-static void do_freq(const char *arg);
 static void cmd_prompt(cmd_state_t *ccmd);
 static void cmd_erase_line(cmd_state_t *ccmd);
+static bool parse_param(void *param, uint8_t type, char *arg);
 
 uint8_t _g_current_console;
 cmd_state_t _g_cmd[CMD_MAX_CONSOLE];
@@ -105,9 +106,17 @@ static void do_help(void)
 
 static void do_show(sys_config_t *config)
 {
+    uint32_t set_freq = (uint32_t)(config->freq / 1000);
+    uint32_t set_freq_rem = (uint32_t)(config->freq % 1000);
+
     printf(
             "\r\nCurrent configuration:\r\n\r\n"
-            "\r\n"
+            "\tfreq ......: %lu.%lu\r\n"
+            "\tr .........: %u\r\n"
+            "\r\n",
+            set_freq,
+            set_freq_rem,
+            config->r_value
     );
 }
 
@@ -126,8 +135,16 @@ bool command_prompt_handler(char *text, sys_config_t *config)
     }
     else if (!stricmp(command, "freq"))
     {
-        do_freq(arg);
-        return true;
+        bool ret = parse_param(&config->freq, PARAM_U64_3DP, arg);
+
+        if (ret)
+            do_freq(config);
+            
+        return ret;
+    }
+    else if (!stricmp(command, "r"))
+    {
+        return parse_param(&config->r_value, PARAM_U16, arg);
     }
     else if (!stricmp(command, "show"))
     {
@@ -170,51 +187,89 @@ static void do_state(void)
     );
 }
 
-static void do_freq(const char *arg)
+static bool parse_param(void *param, uint8_t type, char *arg)
 {
-    adf4350_calculated_parameters_t params;
-    adf4350_platform_data_t settings;
+    uint8_t u8param;
+    uint16_t u16param;
+    uint64_t u64param;
+    uint8_t dp = 0;
+    uint16_t dpmul;
+    char *s;
 
-    settings.clkin = 25000000;
-    settings.channel_spacing = 1000;
-    settings.max_r_value = 0;
-	settings.ref_div2_en = false;
-	settings.ref_doubler_en = false;
-	settings.r2_user_settings = ADF4350_REG2_NOISE_MODE(0) | ADF4350_REG2_LDP_10ns | ADF4350_REG2_MUXOUT(0UL)
-		| ADF4350_REG2_PD_POLARITY_POS | ADF4350_REG2_CHARGE_PUMP_CURR_uA(2500) | ADF4350_REG2_LDF_FRACT_N;
-	settings.r3_user_settings = ADF4350_REG3_12BIT_CLKDIV(150UL) | ADF4350_REG3_12BIT_CLKDIV_MODE(0UL);
-	settings.r4_user_settings = ADF4350_REG4_OUTPUT_PWR(3UL) | ADF4350_REG4_RF_OUT_EN;
+    if (!arg || !*arg)
+    {
+        /* Avoid stack overflow */
+        printf("Error: Missing parameter\r\n");
+        return false;
+    }
 
-    adf4350_set_freq(439852000, &settings, &params);
+    switch (type)
+    {
+        case PARAM_U8:
+            *(uint8_t *)param = u8param;
+            break;
+        case PARAM_U16:
+            s = strtok(arg, ".");
+            u16param = atoi(s);
 
-    uint32_t pfd = (uint32_t)params.pfd;
-    uint32_t actual_freq = (uint32_t)(params.actual_freq / 1000000000);
-    uint32_t actual_freq_rem = (uint32_t)(params.actual_freq % 1000000000);
-    uint32_t vco = (uint32_t)(params.vco / 1000);
+            if (*arg == '-')
+                return false;
 
-    printf("\r\nCalculated state:\r\n\r\n"
-           "\tActual frequency ..: %lu.%lu MHz\r\n"
-           "\tVCO ...............: %lu Hz\r\n"
-           "\tPFD ...............: %lu Hz\r\n"
-           "\tREF_DIV ...........: %d\r\n"
-           "\tR0_INT ............: %d\r\n"
-           "\tR0_FRACT ..........: %d\r\n"
-           "\tR1_MOD ............: %d\r\n"
-           "\tRF_DIV ............: %d\r\n"
-           "\tPRESCALER .........: %s\r\n"
-           "\tBAND_SEL_DIV ......: %d\r\n"
-           "\tR0 ................: 0x%08lX\r\n"
-           "\tR1 ................: 0x%08lX\r\n"
-           "\tR2 ................: 0x%08lX\r\n"
-           "\tR3 ................: 0x%08lX\r\n"
-           "\tR4 ................: 0x%08lX\r\n"
-           "\tR5 ................: 0x%08lX\r\n",
-		actual_freq, actual_freq_rem, vco,
-        pfd, params.r_cnt, params.intv,
-        params.fract, params.mod, params.rf_div,
-        params.prescaler ? "8/9" : "4/5",
-        params.band_sel_div,
-        params.regs[0], params.regs[1], params.regs[2], params.regs[3], params.regs[4], params.regs[5]);
+            s = strtok(NULL, "");
+
+            if (s && *s != 0)
+            {
+                if (dp == 0)
+                    return false;
+                if (dp == 1 && strlen(s) > 1)
+                    return false;
+                
+                u16param += atoi(s);
+            }
+
+            *(uint16_t *)param = u16param;
+            break;
+        case PARAM_U64:
+        case PARAM_U64_3DP:
+            s = strtok(arg, ".");
+            u64param = atoi(s);
+            switch (type)
+            {
+                case PARAM_U64:
+                    break;
+                case PARAM_U64_3DP:
+                    u64param *= _3DP_BASE;
+                    dp = 3;
+                    dpmul = 100;
+                    break;
+            }
+
+            if (*arg == '-')
+                return false;
+
+            s = strtok(NULL, "");
+
+            if (s && *s != 0)
+            {
+                uint16_t dplen = strlen(s);
+                if (dp == 0)
+                    return false;
+                if (dp == 3 &&  dplen> 3)
+                    return false;
+               
+                if (dplen == 1)
+                    u64param += atoi(s) * (dpmul / 1);
+                else if (dplen == 2)
+                    u64param += atoi(s) * (dpmul / 10);
+                else if (dplen == 3)
+                    u64param += atoi(s) * (dpmul / 100);
+
+            }
+            *(uint64_t *)param = u64param;
+            break;
+    }
+
+    return true;
 }
 
 void cmd_init(void)

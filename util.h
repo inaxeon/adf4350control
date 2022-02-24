@@ -28,6 +28,7 @@
 
 #define _1DP_BASE 10
 #define _2DP_BASE 100
+#define _3DP_BASE 1000
 
 #define I_1DP               0
 #define I_2DP               1

@@ -31,9 +31,7 @@ void load_configuration(sys_config_t *config)
     uint16_t config_size = sizeof(sys_config_t);
     if (config_size > 0x100)
     {
-#ifdef _OUTPUT_VERBOSE_
         printf("\r\nConfiguration size is too large. Currently %u bytes.", config_size);
-#endif /* _OUTPUT_VERBOSE_ */
         reset();
     }
     
@@ -41,9 +39,7 @@ void load_configuration(sys_config_t *config)
 
     if (config->magic != CONFIG_MAGIC)
     {
-#ifdef _OUTPUT_VERBOSE_
         printf("\r\nNo configuration found. Setting defaults\r\n");
-#endif /* _OUTPUT_VERBOSE_ */
         default_configuration(config);
         save_configuration(config);
     }
@@ -52,6 +48,8 @@ void load_configuration(sys_config_t *config)
 void default_configuration(sys_config_t *config)
 {
     config->magic = CONFIG_MAGIC;
+    config->freq = DEFAULT_FREQ;
+    config->r_value = DEFAULT_R;
 }
 
 void save_configuration(sys_config_t *config)
