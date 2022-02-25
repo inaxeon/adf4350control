@@ -27,6 +27,7 @@
 #include <stdbool.h>
 #include <avr/io.h>
 #include <avr/pgmspace.h>
+#include <util/delay.h>
 
 #include "adf4350.h"
 #include "iopins.h"
@@ -61,6 +62,7 @@ typedef struct
 static uint32_t adf_4350_gcd(uint32_t a, uint32_t b);
 static uint32_t adf_4350_do_div(uint64_t *n, uint32_t base);
 static int adf4350_tune_r_cnt(adf4350_state_t *st, uint16_t r_cnt);
+static void write_reg(uint32_t reg);
 
 bool adf4350_set_freq(uint64_t freq, adf4350_platform_data_t *settings, adf4350_calculated_parameters_t *params)
 {
@@ -177,13 +179,20 @@ bool adf4350_set_freq(uint64_t freq, adf4350_platform_data_t *settings, adf4350_
         params->fract = st.r0_fract;
         params->mod = st.r1_mod;
         params->rf_div = (1 << st.r4_rf_div_sel);
-        params->actual_freq = (((((uint64_t)st.r0_int * 1000000) + (((uint64_t)st.r0_fract * 1000000) / ((uint64_t)st.r1_mod))) * st.fpfd) / (1 << st.r4_rf_div_sel)) / 1000000;
+        params->actual_freq = (((((uint64_t)st.r0_int * 1000000) + (((uint64_t)st.r0_fract * 1000000)
+            / ((uint64_t)st.r1_mod))) * st.fpfd) / (1 << st.r4_rf_div_sel)) / 1000000;
         params->prescaler = prescaler;
         params->band_sel_div = band_sel_div;
+        // Originally kept in 1000th's of a Hz to improve the resolution of the calculation of actual_freq
+        params->actual_freq /= 1000;
+        params->pfd /= 1000;
 
         for (int i = 0; i < 6; i++)
             params->regs[i] = regs[i];
     }
+
+    for (int i = 0; i < 6; i++)
+        write_reg(regs[i]);
 
     return true;
 }
@@ -242,4 +251,25 @@ static uint32_t adf_4350_gcd(uint32_t a, uint32_t b)
             a += b;
         a >>= 1;
     }
+}
+
+static void write_reg(uint32_t reg)
+{
+    for (int i = 0; i < 32; i++)
+    {
+        if (reg & 0x80000000)
+            IO_HIGH(DATA);
+        else
+            IO_LOW(DATA);
+
+        _delay_us(1);
+        reg <<= 1;
+        IO_HIGH(CLOCK);
+        _delay_us(1);
+        IO_LOW(CLOCK);
+    }
+
+    IO_HIGH(LE);
+    _delay_us(1);
+    IO_LOW(LE);
 }

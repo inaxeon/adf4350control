@@ -38,16 +38,6 @@
 #include "util.h"
 #include "adf4350.h"
 
-#define NO_READING_AVAILABLE        0x7FFFFFF
-#define SENSOR_STATE_ONLINE         0
-#define SENSOR_STATE_ERROR          1
-#define SENSOR_STATE_OFFLINE        2
-
-#define T_TOGGLE_BUTTON             0x01
-#define T_BUTTON_STATUS             0x02
-#define T_BUTTON_UPDATE             0x04
-#define T_GPIO_STATUS               0x08
-
 typedef struct
 {
     sys_config_t *config;
@@ -114,15 +104,11 @@ bool do_freq(sys_config_t *config)
 void do_state(void)
 {
     adf4350_calculated_parameters_t *params = &_g_params;
-    uint32_t pfd = (uint32_t)(params->pfd / 1000);
-    uint32_t actual_freq = (uint32_t)(params->actual_freq / 1000000000);
-    uint32_t actual_freq_rem = (uint32_t)(params->actual_freq % 1000000000) / 1000;
-    uint32_t vco = (uint32_t)(params->vco);
 
     printf("\r\nCalculated state:\r\n\r\n"
            "\tActual frequency ..: %lu.%lu MHz\r\n"
-           "\tVCO ...............: %lu Hz\r\n"
-           "\tPFD ...............: %lu Hz\r\n"
+           "\tVCO ...............: %lu.%lu MHz\r\n"
+           "\tPFD ...............: %lu.%lu MHz\r\n"
            "\tREF_DIV ...........: %d\r\n"
            "\tR0_INT ............: %d\r\n"
            "\tR0_FRACT ..........: %d\r\n"
@@ -136,12 +122,15 @@ void do_state(void)
            "\tR3 ................: 0x%08lX\r\n"
            "\tR4 ................: 0x%08lX\r\n"
            "\tR5 ................: 0x%08lX\r\n\r\n",
-		actual_freq, actual_freq_rem, vco,
-        pfd, params->r_cnt, params->intv,
+		(uint32_t)(params->actual_freq / 1000000), (uint32_t)(params->actual_freq % 1000000),
+        (uint32_t)(params->vco / 1000000), (uint32_t)(params->vco % 1000000),
+        (uint32_t)(params->pfd / 1000000), (uint32_t)(params->pfd % 1000000),
+        params->r_cnt, params->intv,
         params->fract, params->mod, params->rf_div,
         params->prescaler ? "8/9" : "4/5",
         params->band_sel_div,
-        params->regs[0], params->regs[1], params->regs[2], params->regs[3], params->regs[4], params->regs[5]);
+        params->regs[0], params->regs[1], params->regs[2],
+        params->regs[3], params->regs[4], params->regs[5]);
 }
 
 static void clock_init(void)
