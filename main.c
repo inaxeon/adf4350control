@@ -57,6 +57,7 @@ int main(void)
 {
     sys_runstate_t *rs = &_g_rs;
     sys_config_t *config = &_g_cfg;
+    bool on_startup;
 
     memset((void *)&_g_counters, 0x00, sizeof(sys_counters_t));
 
@@ -68,13 +69,22 @@ int main(void)
     g_irq_enable();
 
     usart0_open(USART_CONT_RX, USART_BAUD_RATE(UART0_BAUD)); // Console
-
     stdout = &uart_str;
 
+    _delay_ms(500);
+    
     printf("\r\nStarting up...\r\n");
 
     load_configuration(config);
 
+    on_startup = config->out_on;
+    // For some reason the first write of R0 fails, probably power on glitches
+    // But it doesn't matter for now as all this is doing is setting RF out to "off"
+    config->out_on = false;
+    do_freq(config); 
+
+    // Restore configured RF out state
+    config->out_on = on_startup;
     do_freq(config);
 
     // Idle loop
@@ -93,10 +103,10 @@ bool do_freq(sys_config_t *config)
     settings.max_r_value = config->r_value;
 	settings.ref_div2_en = false;
 	settings.ref_doubler_en = false;
-	settings.r2_user_settings = ADF4350_REG2_NOISE_MODE(0) | ADF4350_REG2_LDP_10ns | ADF4350_REG2_MUXOUT(0UL)
+	settings.r2_user_settings = ADF4350_REG2_NOISE_MODE(0) | ADF4350_REG2_LDP_10ns | ADF4350_REG2_MUXOUT(0)
 		| ADF4350_REG2_PD_POLARITY_POS | ADF4350_REG2_CHARGE_PUMP_CURR_uA(2500) | ADF4350_REG2_LDF_FRACT_N;
-	settings.r3_user_settings = ADF4350_REG3_12BIT_CLKDIV(150UL) | ADF4350_REG3_12BIT_CLKDIV_MODE(0UL);
-	settings.r4_user_settings = ADF4350_REG4_OUTPUT_PWR((uint32_t)config->power) | ADF4350_REG4_RF_OUT_EN;
+	settings.r3_user_settings = ADF4350_REG3_12BIT_CLKDIV(150) | ADF4350_REG3_12BIT_CLKDIV_MODE(0);
+	settings.r4_user_settings = ADF4350_REG4_OUTPUT_PWR(config->power) | (config->out_on ? ADF4350_REG4_RF_OUT_EN : 0);
 
     return adf4350_set_freq(config->freq * 1000 /* Hz from here on */, &settings, &_g_params);
 }
@@ -121,7 +131,8 @@ void do_state(void)
            "\tR2 ................: 0x%08lX\r\n"
            "\tR3 ................: 0x%08lX\r\n"
            "\tR4 ................: 0x%08lX\r\n"
-           "\tR5 ................: 0x%08lX\r\n\r\n",
+           "\tR5 ................: 0x%08lX\r\n\r\n"
+           "Lock detect: %s\r\n\r\n",
 		(uint32_t)(params->actual_freq / 1000000), (uint32_t)(params->actual_freq % 1000000),
         (uint32_t)(params->vco / 1000000), (uint32_t)(params->vco % 1000000),
         (uint32_t)(params->pfd / 1000000), (uint32_t)(params->pfd % 1000000),
@@ -130,7 +141,8 @@ void do_state(void)
         params->prescaler ? "8/9" : "4/5",
         params->band_sel_div,
         params->regs[0], params->regs[1], params->regs[2],
-        params->regs[3], params->regs[4], params->regs[5]);
+        params->regs[3], params->regs[4], params->regs[5],
+        IO_IN_HIGH(LD) ? "on" : "off");
 }
 
 static void clock_init(void)
@@ -145,7 +157,7 @@ static void io_init(void)
     IO_OUTPUT(DATA);
     IO_OUTPUT(CLOCK);
 
-    IO_LOW(LE);
+    IO_HIGH(LE);
     IO_LOW(CLOCK);
     IO_LOW(DATA);
 }

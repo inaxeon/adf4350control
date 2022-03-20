@@ -47,6 +47,7 @@ void default_configuration(sys_config_t *config)
     config->freq = DEFAULT_FREQ;
     config->r_value = DEFAULT_R;
     config->power = DEFAULT_POWER;
+    config->out_on = false;
 }
 
 void save_configuration(sys_config_t *config)

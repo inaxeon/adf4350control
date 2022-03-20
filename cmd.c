@@ -83,6 +83,7 @@ typedef struct
 static void do_help(void);
 static void cmd_prompt(cmd_state_t *ccmd);
 static bool do_power(sys_config_t *config, const char *arg);
+static bool do_on_off(sys_config_t *config, const char *arg);
 static void cmd_erase_line(cmd_state_t *ccmd);
 static bool parse_param(void *param, uint8_t type, char *arg);
 
@@ -107,6 +108,8 @@ static void do_help(void)
         "\t\tSet maximum R value\r\n\r\n"
         "\tpower [-4|-1|+2|+5]\r\n"
         "\t\tSet output power in dBm\r\n\r\n"
+        "\tout [on|off]\r\n"
+        "\t\tSet output on or off\r\n\r\n"
         "\tshow\r\n"
         "\t\tShow current configuration\r\n\r\n"
         "\tdefault\r\n"
@@ -128,11 +131,13 @@ static void do_show(sys_config_t *config)
             "\tfreq ..............: %lu.%lu MHz\r\n"
             "\tr .................: %u\r\n"
             "\tpower .............: %s dBm\r\n"
+            "\tout ...............: %s\r\n"
             "\r\n",
             set_freq,
             set_freq_rem,
             config->r_value,
-            _g_powerLevels[config->power]
+            _g_powerLevels[config->power],
+            config->out_on ? "on" : "off"
     );
 }
 
@@ -165,6 +170,10 @@ bool command_prompt_handler(char *text, sys_config_t *config)
     else if (!stricmp(command, "power"))
     {
         return do_power(config, arg);
+    }
+    else if (!stricmp(command, "out"))
+    {
+        return do_on_off(config, arg);
     }
     else if (!stricmp(command, "show"))
     {
@@ -206,8 +215,25 @@ static bool do_power(sys_config_t *config, const char *arg)
         if (!strcmp(arg, _g_powerLevels[i]))
         {
             config->power = i;
-            return true;
+            return do_freq(config);
         }
+    }
+
+    return false;
+}
+
+static bool do_on_off(sys_config_t *config, const char *arg)
+{
+    if (!strcasecmp(arg, "on"))
+    {
+        config->out_on = true;
+        return do_freq(config);
+    }
+
+    if (!strcasecmp(arg, "off"))
+    {
+        config->out_on = false;
+        return do_freq(config);
     }
 
     return false;

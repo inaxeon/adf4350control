@@ -59,10 +59,10 @@ typedef struct
     uint32_t                r4_rf_div_sel;
 } adf4350_state_t;
 
-static uint32_t adf_4350_gcd(uint32_t a, uint32_t b);
-static uint32_t adf_4350_do_div(uint64_t *n, uint32_t base);
+static uint32_t adf4350_gcd(uint32_t a, uint32_t b);
+static uint32_t adf4350_do_div(uint64_t *n, uint32_t base);
 static int adf4350_tune_r_cnt(adf4350_state_t *st, uint16_t r_cnt);
-static void write_reg(uint32_t reg);
+static void adf4350_write_reg(uint32_t reg);
 
 bool adf4350_set_freq(uint64_t freq, adf4350_platform_data_t *settings, adf4350_calculated_parameters_t *params)
 {
@@ -114,15 +114,15 @@ bool adf4350_set_freq(uint64_t freq, adf4350_platform_data_t *settings, adf4350_
         } while (r_cnt == 0);
 
         tmp = freq * st.r1_mod + ((st.fpfd / 1000) >> 1);
-        adf_4350_do_div(&tmp, (st.fpfd / 1000)); /* Div round closest (n + d/2)/d */
-        st.r0_fract = adf_4350_do_div(&tmp, st.r1_mod);
+        adf4350_do_div(&tmp, (st.fpfd / 1000)); /* Div round closest (n + d/2)/d */
+        st.r0_fract = adf4350_do_div(&tmp, st.r1_mod);
         st.r0_int = tmp;
     } while (mdiv > st.r0_int);
 
     band_sel_div = DIV_ROUND_UP(st.fpfd, ADF4350_MAX_BANDSEL_CLK);
 
     if (st.r0_fract && st.r1_mod) {
-        div_gcd = adf_4350_gcd(st.r1_mod, st.r0_fract);
+        div_gcd = adf4350_gcd(st.r1_mod, st.r0_fract);
         st.r1_mod /= div_gcd;
         st.r0_fract /= div_gcd;
     }
@@ -160,9 +160,9 @@ bool adf4350_set_freq(uint64_t freq, adf4350_platform_data_t *settings, adf4350_
         ADF4350_REG4_FEEDBACK_FUND |
         ADF4350_REG4_RF_DIV_SEL(st.r4_rf_div_sel) |
         ADF4350_REG4_8BIT_BAND_SEL_CLKDIV(band_sel_div) |
-        ADF4350_REG4_RF_OUT_EN |
         (settings->r4_user_settings &
         (ADF4350_REG4_OUTPUT_PWR(0x3) |
+            ADF4350_REG4_RF_OUT_EN |
             ADF4350_REG4_AUX_OUTPUT_PWR(0x3) |
             ADF4350_REG4_AUX_OUTPUT_EN |
             ADF4350_REG4_AUX_OUTPUT_FUND |
@@ -192,7 +192,7 @@ bool adf4350_set_freq(uint64_t freq, adf4350_platform_data_t *settings, adf4350_
     }
 
     for (int i = 0; i < 6; i++)
-        write_reg(regs[i]);
+        adf4350_write_reg(regs[i]);
 
     return true;
 }
@@ -209,14 +209,14 @@ static int adf4350_tune_r_cnt(adf4350_state_t *st, uint16_t r_cnt)
     return r_cnt;
 }
 
-static uint32_t adf_4350_do_div(uint64_t *n, uint32_t base)
+static uint32_t adf4350_do_div(uint64_t *n, uint32_t base)
 {
     uint32_t remainder = *n % base;
     *n = *n / base;
     return remainder;
 }
 
-static uint32_t adf_4350_gcd(uint32_t a, uint32_t b)
+static uint32_t adf4350_gcd(uint32_t a, uint32_t b)
 {
     uint32_t r = a | b;
 
@@ -253,8 +253,11 @@ static uint32_t adf_4350_gcd(uint32_t a, uint32_t b)
     }
 }
 
-static void write_reg(uint32_t reg)
+static void adf4350_write_reg(uint32_t reg)
 {
+    IO_LOW(LE);
+    _delay_us(1);
+
     for (int i = 0; i < 32; i++)
     {
         if (reg & 0x80000000)
@@ -267,9 +270,9 @@ static void write_reg(uint32_t reg)
         IO_HIGH(CLOCK);
         _delay_us(1);
         IO_LOW(CLOCK);
+        _delay_us(1);
     }
 
-    IO_HIGH(LE);
     _delay_us(1);
-    IO_LOW(LE);
+    IO_HIGH(LE);
 }
