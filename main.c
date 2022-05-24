@@ -57,7 +57,6 @@ int main(void)
 {
     sys_runstate_t *rs = &_g_rs;
     sys_config_t *config = &_g_cfg;
-    bool on_startup;
 
     memset((void *)&_g_counters, 0x00, sizeof(sys_counters_t));
 
@@ -76,15 +75,6 @@ int main(void)
     printf("\r\nStarting up...\r\n");
 
     load_configuration(config);
-
-    on_startup = config->out_on;
-    // For some reason the first write of R0 fails, probably power on glitches
-    // But it doesn't matter for now as all this is doing is setting RF out to "off"
-    config->out_on = false;
-    do_freq(config); 
-
-    // Restore configured RF out state
-    config->out_on = on_startup;
     do_freq(config);
 
     // Idle loop
@@ -153,13 +143,13 @@ static void clock_init(void)
 static void io_init(void)
 {
     IO_INPUT(LD);
+    IO_LOW(LE);
+    IO_LOW(CLOCK);
+    IO_LOW(DATA);
+
     IO_OUTPUT(LE);
     IO_OUTPUT(DATA);
     IO_OUTPUT(CLOCK);
-
-    IO_HIGH(LE);
-    IO_LOW(CLOCK);
-    IO_LOW(DATA);
 }
 
 int print_char(char byte, FILE *stream)

@@ -191,8 +191,8 @@ bool adf4350_set_freq(uint64_t freq, adf4350_platform_data_t *settings, adf4350_
             params->regs[i] = regs[i];
     }
 
-    for (int i = 0; i < 6; i++)
-        adf4350_write_reg(regs[i]);
+    for (int i = 6; i > 0; i--) // Mandatory to write registers in reverse order
+        adf4350_write_reg(regs[i - 1]);
 
     return true;
 }
@@ -275,4 +275,5 @@ static void adf4350_write_reg(uint32_t reg)
 
     _delay_us(1);
     IO_HIGH(LE);
+    _delay_us(10);
 }
